@@ -35,6 +35,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+pub mod bdd_u16;
+
 pub mod boolean_expression;
 pub mod op_function;
 pub mod tutorial;
