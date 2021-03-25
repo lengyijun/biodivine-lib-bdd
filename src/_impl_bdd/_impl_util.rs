@@ -9,23 +9,23 @@ use std::slice::Iter;
 impl Bdd {
     /// The number of nodes in this `Bdd`. (Do not confuse with cardinality)
     pub fn size(&self) -> usize {
-        return self.0.len();
+        self.0.len()
     }
 
     /// Number of variables in the corresponding `BddVariableSet`.
     pub fn num_vars(&self) -> u16 {
         // Assert: every BDD is not empty - it has at least the terminal zero node.
-        return self.0[0].var.0;
+        self.0[0].var.0
     }
 
     /// True if this `Bdd` is exactly the `true` formula.
     pub fn is_true(&self) -> bool {
-        return self.0.len() == 2;
+        self.0.len() == 2
     }
 
     /// True if this `Bdd` is exactly the `false` formula.
     pub fn is_false(&self) -> bool {
-        return self.0.len() == 1;
+        self.0.len() == 1
     }
 
     /// Approximately computes the number of valuations satisfying the formula given
@@ -34,13 +34,13 @@ impl Bdd {
         if self.is_false() {
             return 0.0;
         }
-        let mut cache = vec![-1.0; self.0.len()];
-        cache[0] = 0.0;
-        cache[1] = 1.0;
+        let mut cache = vec![None; self.0.len()];
+        cache[0] = Some(0.0);
+        cache[1] = Some(1.0);
         let mut stack: Vec<BddPointer> = Vec::new();
         stack.push(self.root_pointer());
         while let Some(node) = stack.last() {
-            if cache[node.0 as usize] >= 0.0 {
+            if cache[node.0 as usize].is_some() {
                 stack.pop();
             } else {
                 let low = self.low_link_of(*node);
@@ -51,24 +51,29 @@ impl Bdd {
                 let low = low.0 as usize;
                 let high = high.0 as usize;
 
-                if cache[low] >= 0.0 && cache[high] >= 0.0 {
+                if cache[low].is_some() && cache[high].is_some() {
                     let low_cardinality =
-                        cache[low] * 2.0_f64.powi((low_var - node_var - 1) as i32);
+                        cache[low].unwrap() * 2.0_f64.powi((low_var - node_var - 1) as i32);
                     let high_cardinality =
-                        cache[high] * 2.0_f64.powi((high_var - node_var - 1) as i32);
-                    cache[node.0 as usize] = low_cardinality + high_cardinality;
+                        cache[high].unwrap() * 2.0_f64.powi((high_var - node_var - 1) as i32);
+                    cache[node.0 as usize] = Some(low_cardinality + high_cardinality);
                     stack.pop();
                 } else {
-                    if cache[low] < 0.0 {
+                    if cache[low].is_none() {
                         stack.push(BddPointer(low as u32));
                     }
-                    if cache[high] < 0.0 {
+                    if cache[high].is_none() {
                         stack.push(BddPointer(high as u32));
                     }
                 }
             }
         }
-        return *cache.last().unwrap() * 2.0_f64.powi(self.0.last().unwrap().var.0 as i32);
+        let r = cache.last().unwrap().unwrap() * 2.0_f64.powi(self.0.last().unwrap().var.0 as i32);
+        if r.is_nan() {
+            f64::INFINITY
+        } else {
+            r
+        }
     }
 
     /// If the `Bdd` is satisfiable, return some `BddValuation` that satisfies the `Bdd`.
@@ -98,7 +103,7 @@ impl Bdd {
             }
         }
 
-        return Some(BddValuation::new(valuation));
+        Some(BddValuation::new(valuation))
     }
 
     /// Convert this `Bdd` to a `BooleanExpression` (using the variable names from the given
@@ -179,22 +184,22 @@ impl Bdd {
             results.push(expression);
         }
 
-        return results.last().unwrap().clone();
+        results.last().unwrap().clone()
     }
 
     /// **(internal)** Pointer to the root of the decision diagram.
     pub(crate) fn root_pointer(&self) -> BddPointer {
-        return BddPointer::from_index(self.0.len() - 1);
+        BddPointer::from_index(self.0.len() - 1)
     }
 
     /// **(internal)** Get the low link of the node at a specified location.
     pub(crate) fn low_link_of(&self, node: BddPointer) -> BddPointer {
-        return self.0[node.to_index()].low_link;
+        self.0[node.to_index()].low_link
     }
 
     /// **(internal)** Get the high link of the node at a specified location.
     pub(crate) fn high_link_of(&self, node: BddPointer) -> BddPointer {
-        return self.0[node.to_index()].high_link;
+        self.0[node.to_index()].high_link
     }
 
     /// **(internal)** Get the conditioning variable of the node at a specified location.
@@ -204,17 +209,37 @@ impl Bdd {
         if cfg!(shields_up) && (node.is_one() || node.is_zero()) {
             panic!("Terminal nodes don't have a conditioning variable!");
         }
-        return self.0[node.to_index()].var;
+        self.0[node.to_index()].var
     }
 
     /// **(internal)** Create a new `Bdd` for the `false` formula.
     pub(crate) fn mk_false(num_vars: u16) -> Bdd {
-        return Bdd(vec![BddNode::mk_zero(num_vars)]);
+        Bdd(vec![BddNode::mk_zero(num_vars)])
     }
 
     /// **(internal)** Create a new `Bdd` for the `true` formula.
     pub(crate) fn mk_true(num_vars: u16) -> Bdd {
-        return Bdd(vec![BddNode::mk_zero(num_vars), BddNode::mk_one(num_vars)]);
+        Bdd(vec![BddNode::mk_zero(num_vars), BddNode::mk_one(num_vars)])
+    }
+
+    pub(crate) fn mk_var(num_vars: u16, var: BddVariable) -> Bdd {
+        let mut bdd = Self::mk_true(num_vars);
+        bdd.push_node(BddNode::mk_node(var, BddPointer::zero(), BddPointer::one()));
+        bdd
+    }
+
+    pub(crate) fn mk_not_var(num_vars: u16, var: BddVariable) -> Bdd {
+        let mut bdd = Self::mk_true(num_vars);
+        bdd.push_node(BddNode::mk_node(var, BddPointer::one(), BddPointer::zero()));
+        bdd
+    }
+
+    pub(crate) fn mk_literal(num_vars: u16, var: BddVariable, value: bool) -> Bdd {
+        if value {
+            Self::mk_var(num_vars, var)
+        } else {
+            Self::mk_not_var(num_vars, var)
+        }
     }
 
     /// **(internal)** Add a new node to an existing `Bdd`, making the new node the root of the `Bdd`.
@@ -227,12 +252,12 @@ impl Bdd {
     /// The iteration order is the same as the underlying representation, so you can expect
     /// terminals to be the first two nodes.
     pub(crate) fn pointers(&self) -> Map<Range<usize>, fn(usize) -> BddPointer> {
-        return (0..self.size()).map(BddPointer::from_index);
+        (0..self.size()).map(BddPointer::from_index)
     }
 
     /// **(internal)** Create an iterator over all nodes of the `Bdd` (including terminals).
     pub(crate) fn nodes(&self) -> Iter<BddNode> {
-        return self.0.iter();
+        self.0.iter()
     }
 }
 
