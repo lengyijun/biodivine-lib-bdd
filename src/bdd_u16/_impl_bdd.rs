@@ -34,7 +34,7 @@ impl Bdd {
         Bdd(NodePointer::terminal(is_true), vec![vec![]; 64])
     }
 
-    pub(super) fn mk_var(id: VariableId, value: bool) -> Bdd {
+    pub fn mk_var(id: VariableId, value: bool) -> Bdd {
         let mut bdd = Self::mk_blank(false);
         let node = if value {
             Node(NodePointer::zero(), NodePointer::one())
@@ -66,7 +66,7 @@ impl Bdd {
     }
 
     /// Number of nodes that form the graph of this `Bdd`.
-    pub(super) fn node_count(&self) -> usize {
+    pub fn node_count(&self) -> usize {
         let mut count = 0;
         for vector in &self.1 {
             count += vector.len()

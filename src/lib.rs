@@ -143,7 +143,7 @@ pub struct BddVariableSetBuilder {
 /// represented as `u32` instead of `usize`, because `usize` can be 64-bits and pointers
 /// represent most of the memory consumed by our BDDs.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-struct BddPointer(u32);
+pub struct BddPointer(u32);
 
 /// **(internal)** Representation of individual vertices of the `Bdd` directed acyclic graph.
 ///
@@ -165,7 +165,7 @@ struct BddPointer(u32);
 /// `BddVariableSet`. This is consistent with the fact that we first condition on smallest
 /// variable ids. It can be also used for consistency checks inside the library.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-struct BddNode {
+pub struct BddNode {
     pub var: BddVariable,
     pub low_link: BddPointer,
     pub high_link: BddPointer,

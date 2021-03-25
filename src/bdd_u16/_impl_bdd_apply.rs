@@ -1,4 +1,4 @@
-use crate::bdd_u16::{Bdd, NodeStorage, TaskStorage, NodePointer, Node};
+use crate::bdd_u16::{Bdd, NodeStorage, TaskStorage, NodePointer, Node, NewNodeStorage};
 use std::option::Option::Some;
 use std::cmp::{min, max};
 
@@ -70,6 +70,7 @@ pub(super) fn apply<T>(
 where
     T: Fn(Option<bool>, Option<bool>) -> Option<bool>
 {
+    println!("Apply: {} {}", left.node_count(), right.node_count());
     // If the arguments are trivial, we may be able to resolve them using lookup table only:
     let left_const = left.root().as_bool();
     let right_const = right.root().as_bool();
@@ -86,6 +87,7 @@ where
     let mut output = Bdd::mk_blank(false);
 
     let capacity = max(left.node_count(), right.node_count());
+    //let mut nodes = NewNodeStorage::new(max(left.1.len(), right.1.len()), capacity); //NodeStorage::new(capacity);
     let mut nodes = NodeStorage::new(capacity);
     let mut tasks = TaskStorage::new(capacity);
 
@@ -93,7 +95,7 @@ where
     task_stack.push((left.root(), right.root()));
 
     while let Some(last) = task_stack.last() {
-        if tasks.is_done(last) {
+        if tasks.resolve(last.0, last.1).is_some() {
             task_stack.pop();
         } else {
             let (l, r) = (last.0, last.1);
@@ -165,6 +167,9 @@ where
 
         }
     }
+
+    //println!("Node stats: {:?}", nodes.stats);
+    //println!("Task stats: {:?}", tasks.stats);
 
     let result = tasks.resolve(left.root(), right.root()).unwrap_or_else(|| {
         panic!("When the main loop is finished, this task must be completed.")

@@ -1,4 +1,4 @@
-use crate::{bdd, BddVariable, BddVariableSet};
+use crate::{bdd, BddVariableSet};
 use test::Bencher;
 
 fn bn_parametrised_observability(b: &mut Bencher, num_regulators: u16) {

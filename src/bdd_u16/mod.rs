@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 use fxhash::FxBuildHasher;
+use crate::BddPointer;
 
 mod _impl_bdd;
 mod _impl_bdd_apply;
@@ -75,7 +76,7 @@ struct NodePointer(u16);
 /// For variable IDs, we use u32 for two pragmatic reasons. First, even in a very wide pointer
 /// implementation (say, 128 bits, which would be , we are
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-pub struct VariableId(u32);
+pub struct VariableId(pub u32);
 
 /// A `Bdd` node consists of just two `NodePointers` (low and high). Note that the `VariableId`
 /// is not part of the node, but is instead inferred from context (i.e. from the `NodePointer`
@@ -93,11 +94,130 @@ struct Node(NodePointer, NodePointer);
 pub struct Bdd(NodePointer, Vec<Vec<Node>>);
 
 struct NodeStorage {
+    stats: (u64, u64, u64),
     map: HashMap<(VariableId, Node), NodePointer, FxBuildHasher>
 }
 
 struct TaskStorage {
+    stats: (u64, u64, u64),
     map: HashMap<(NodePointer, NodePointer), NodePointer, FxBuildHasher>
+}
+
+struct NewNodeStorage {
+    vars: Vec<VarNodeStorage>
+}
+
+struct VarNodeStorage {
+    constant: [NodePointer; 4],
+    terminal: [Vec<NodePointer>; 4],
+    equal_vars: Vec<Vec<NodePointer>>,
+    other: HashMap<(NodePointer, NodePointer), NodePointer>
+}
+
+impl NewNodeStorage {
+
+    pub fn new(var_count: usize, _capacity: usize) -> NewNodeStorage {
+        let mut vars = vec![];
+        for _ in 0..var_count {
+            vars.push(VarNodeStorage::new(var_count))
+        }
+        NewNodeStorage { vars }
+
+    }
+
+    pub fn find(&mut self, variable: VariableId, node: Node) -> Option<NodePointer> {
+        self.vars[usize::from(variable)].find(node.0, node.1)
+    }
+
+    pub fn insert(&mut self, variable: VariableId, node: Node, pointer: NodePointer) {
+        self.vars[usize::from(variable)].insert(node.0, node.1, pointer);
+    }
+
+}
+
+impl VarNodeStorage {
+
+    pub fn new(vars: usize) -> VarNodeStorage {
+        let mut equal_vars = Vec::new();
+        for _ in 0..vars {
+            equal_vars.push(Vec::with_capacity(64));
+        }
+        VarNodeStorage {
+            constant: [NodePointer::none_pointer(); 4],
+            terminal: [Vec::with_capacity(64), Vec::with_capacity(64), Vec::with_capacity(64), Vec::with_capacity(64)],
+            equal_vars,
+            other: HashMap::new()
+        }
+    }
+
+    pub fn find(&self, low: NodePointer, high: NodePointer) -> Option<NodePointer> {
+        let value: Option<NodePointer> = match (low.as_bool(), high.as_bool()) {
+            (Some(false), Some(false)) => Some(self.constant[0]),
+            (Some(false), Some(true)) => Some(self.constant[1]),
+            (Some(true), Some(false)) => Some(self.constant[2]),
+            (Some(true), Some(true)) => Some(self.constant[3]),
+            (Some(false), _) => self.terminal[0].get(high.node_index()).cloned(),
+            (Some(true), _) => self.terminal[1].get(high.node_index()).cloned(),
+            (_, Some(false)) => self.terminal[2].get(low.node_index()).cloned(),
+            (_, Some(true)) => self.terminal[3].get(low.node_index()).cloned(),
+            (None, None) => {
+                if low.variable_id() != high.variable_id() {
+                    self.other.get(&(low, high)).cloned()
+                } else {
+                    let vector = &self.equal_vars[usize::from(low.variable_id())];
+                    let index_low = low.node_index();
+                    let index_high = high.node_index();
+                    let index = interleave(index_low as u64, index_high as u64) as usize;
+                    vector.get(index).cloned()
+                }
+            }
+        };
+
+        value.and_then(|p| p.as_pointer())
+    }
+
+    pub fn insert(&mut self, low: NodePointer, high: NodePointer, result: NodePointer) {
+        match (low.as_bool(), high.as_bool()) {
+            (Some(false), Some(false)) => self.constant[0] = result,
+            (Some(false), Some(true)) => self.constant[1] = result,
+            (Some(true), Some(false)) => self.constant[2] = result,
+            (Some(true), Some(true)) => self.constant[3] = result,
+            (Some(false), _) => vec_insert(&mut self.terminal[0], high.node_index(), result),
+            (Some(true), _) => vec_insert(&mut self.terminal[1], high.node_index(), result),
+            (_, Some(false)) => vec_insert(&mut self.terminal[2], low.node_index(), result),
+            (_, Some(true)) => vec_insert(&mut self.terminal[3], low.node_index(), result),
+            (None, None) => {
+                if low.variable_id() != high.variable_id() {
+                    self.other.get(&(low, high)).cloned();
+                } else {
+                    let vector = &mut self.equal_vars[usize::from(low.variable_id())];
+                    let index_low = low.node_index();
+                    let index_high = high.node_index();
+                    let index = interleave(index_low as u64, index_high as u64) as usize;
+                    vec_insert(vector, index, result);
+                }
+            }
+        };
+    }
+
+}
+
+fn interleave(b1: u64, b2: u64) -> u64 {
+    (((b2 * 0x0101010101010101 & 0x8040201008040201) *
+        0x0102040810204081 >> 49) & 0x5555) |
+        (((b1 * 0x0101010101010101 & 0x8040201008040201) *
+            0x0102040810204081 >> 48) & 0xAAAA)
+}
+
+fn vec_insert(vector: &mut Vec<NodePointer>, index: usize, pointer: NodePointer) {
+    if index >= vector.len() {
+        let reserve = index - vector.len() + 1;
+        vector.reserve(reserve);
+        for _ in 0..reserve {
+            vector.push(NodePointer::none_pointer())
+        }
+    }
+    vector[index] = pointer;
 }
 
 /*

@@ -1,11 +1,16 @@
 use crate::bdd_u16::{NodePointer, VariableId};
 use std::ops::{Shl, Shr};
 use std::convert::TryFrom;
+use crate::BddPointer;
 
 // 2 bits per block = 4 variables per block
 const VAR_BLOCK_SIZE: u32 = 4;
 
 impl NodePointer {
+    pub fn none_pointer() -> NodePointer {
+        NodePointer(0b0100_0000_0000_0000)
+    }
+
     /// Constant representation of the zero pointer.
     pub fn zero() -> NodePointer {
         NodePointer(0b_0000_0000_0000_0000)
@@ -104,6 +109,10 @@ impl NodePointer {
     /// If the value is not a pointer, behaviour of other methods on such value is undefined.
     pub fn is_pointer(&self) -> bool {
         self.is_terminal() || self.0.trailing_zeros() <= 8
+    }
+
+    pub fn as_pointer(&self) -> Option<NodePointer> {
+        if self.is_pointer() { Some(*self) } else { None }
     }
 
     /// A non trivial pointer is a valid pointer that is not terminal. From these pointers,
