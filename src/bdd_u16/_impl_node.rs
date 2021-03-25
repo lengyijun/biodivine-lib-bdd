@@ -9,8 +9,8 @@ impl Node {
         self.1
     }
 
-    /// Flip the low/high pointers in this node.
+    /*/// Flip the low/high pointers in this node.
     pub fn flip(&self) -> Node {
         Node(self.1, self.0)
-    }
+    }*/
 }

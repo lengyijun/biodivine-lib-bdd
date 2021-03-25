@@ -2,8 +2,6 @@ use crate::bdd_u16::{NodePointer, VariableId};
 use std::ops::{Shl, Shr};
 use std::convert::TryFrom;
 
-// 2 bits per block, 8 high blocks and 8 low blocks = 6 addressable bits
-const MAX_VAR_ID: u32 = 0b0011_1111;
 // 2 bits per block = 4 variables per block
 const VAR_BLOCK_SIZE: u32 = 4;
 
@@ -23,6 +21,34 @@ impl NodePointer {
         match value {
             true => Self::one(),
             false => Self::zero(),
+        }
+    }
+
+    /// If this node is a terminal, return the terminal value.
+    pub fn as_bool(&self) -> Option<bool> {
+        if self.is_terminal() {
+            Some(self.0 != 0)
+        } else {
+            None
+        }
+    }
+
+    /// True if this pointer is the one terminal.
+    pub fn is_one(&self) -> bool {
+        self.0 == 0b_1000_0000_0000_0000
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn flip_if_terminal(&self) -> NodePointer {
+        if self.is_one() {
+            NodePointer::zero()
+        } else if self.is_zero() {
+            NodePointer::one()
+        } else {
+            *self
         }
     }
 

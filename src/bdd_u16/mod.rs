@@ -1,10 +1,16 @@
 //! A new alternative minimalistic implementation of `Bdds` that we can use for testing
 //! and experiments in hashing and algorithms in general.
 
+use std::collections::HashMap;
+use fxhash::FxBuildHasher;
+
 mod _impl_bdd;
+mod _impl_bdd_apply;
 mod _impl_node;
 mod _impl_node_pointer;
 mod _impl_variable_id;
+mod _impl_node_storage;
+mod _impl_task_storage;
 
 /// Node pointer identifies one node in a `Bdd`. It actually packs two pieces of information
 /// together: the variable id and the pointer to that variables' node vector. The variable
@@ -63,18 +69,18 @@ mod _impl_variable_id;
 /// are never going to leave the context of a particular Bdd.
 ///
 // TODO: Do we want some kind of order on bdd node pointers? I guess we can have it, but is it necessary?
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 struct NodePointer(u16);
 
 /// For variable IDs, we use u32 for two pragmatic reasons. First, even in a very wide pointer
 /// implementation (say, 128 bits, which would be , we are
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct VariableId(u32);
 
 /// A `Bdd` node consists of just two `NodePointers` (low and high). Note that the `VariableId`
 /// is not part of the node, but is instead inferred from context (i.e. from the `NodePointer`
 /// that defines this particular node).
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 struct Node(NodePointer, NodePointer);
 
 /// A Bdd is a heap-allocated array of X vectors (one per variable), together with a
@@ -86,6 +92,15 @@ struct Node(NodePointer, NodePointer);
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Bdd(NodePointer, Vec<Vec<Node>>);
 
+struct NodeStorage {
+    map: HashMap<(VariableId, Node), NodePointer, FxBuildHasher>
+}
+
+struct TaskStorage {
+    map: HashMap<(NodePointer, NodePointer), NodePointer, FxBuildHasher>
+}
+
+/*
 /// Pointer map is a mapping from (NodePointer, NodePointer) to a single NodePointer. As such,
 /// it can be used for node uniqueness decisions (assuming we have one pointer map for each
 /// variable), but also as an operation cache, where the two pointers are from two different
@@ -100,3 +115,4 @@ pub struct Bdd(NodePointer, Vec<Vec<Node>>);
 struct PointerMap {
     //TODO
 }
+*/
