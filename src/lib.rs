@@ -32,8 +32,13 @@
 //! Additionally, we provide serialisation into a custom string and binary formats as well as `.dot`.
 //! For a more detailed description, see the [tutorial module](./tutorial/index.html) documentation.
 //! There is also an experimental support for converting BDDs back into boolean expressions.
+#![feature(test)]
+extern crate test;
 
 use std::collections::{HashMap, HashSet};
+
+#[cfg(test)]
+mod benchmarks;
 
 pub mod boolean_expression;
 pub mod op_function;

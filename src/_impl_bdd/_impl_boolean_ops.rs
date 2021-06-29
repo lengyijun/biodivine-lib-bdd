@@ -100,7 +100,11 @@ fn apply<T>(left: &Bdd, right: &Bdd, terminal_lookup: T) -> Bdd
 where
     T: Fn(Option<bool>, Option<bool>) -> Option<bool>,
 {
-    apply_with_flip(left, right, None, None, None, terminal_lookup)
+    if left.size() * right.size() < 65535 {
+        super::u16_apply::apply(left, right, terminal_lookup)
+    } else {
+        apply_with_flip(left, right, None, None, None, terminal_lookup)
+    }
 }
 
 /// **(internal)** Universal function to implement standard logical operators.
