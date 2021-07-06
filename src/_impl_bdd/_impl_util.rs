@@ -201,14 +201,25 @@ impl Bdd {
         self.0[node.to_index()].high_link
     }
 
+    #[inline]
+    pub(crate) fn links(&self, node: BddPointer) -> (BddPointer, BddPointer) {
+        let index = node.to_index();
+        unsafe {
+            //let node = &self.0[index];
+            let node = self.0.get_unchecked(index);
+            (node.low_link, node.high_link)
+        }
+    }
+
     /// **(internal)** Get the conditioning variable of the node at a specified location.
     ///
     /// *Panics:* `node` must not be a terminal.
+    #[inline]
     pub(crate) fn var_of(&self, node: BddPointer) -> BddVariable {
-        if cfg!(shields_up) && (node.is_one() || node.is_zero()) {
-            panic!("Terminal nodes don't have a conditioning variable!");
+        unsafe {
+            self.0.get_unchecked(node.to_index()).var
         }
-        self.0[node.to_index()].var
+        //self.0[node.to_index()].var
     }
 
     /// **(internal)** Create a new `Bdd` for the `false` formula.

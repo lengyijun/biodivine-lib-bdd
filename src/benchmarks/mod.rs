@@ -1,6 +1,9 @@
 use crate::{bdd, Bdd, BddVariableSet};
 use test::Bencher;
 use crate::_impl_bdd::bench_task_generator::{spawn_tasks, spawn_tasks_2};
+use std::cmp::max;
+use crate::_impl_bdd::cache2::Cache2;
+use std::os::linux::raw::stat;
 
 
 fn ripple_carry_adder(b: &mut Bencher, num_vars: u16) {
@@ -40,9 +43,11 @@ fn minus_1000(bencher: &mut Bencher) {
     let b = Bdd::from_string(&std::fs::read_to_string("inputs/minus_1000_b.bdd").unwrap());
     println!("A:{}, B:{}", a.size(), b.size());
     a.and_not(&b);
-    println!("Spawned: {:?}", spawn_tasks_2(&a, &b));
+    let mut op_cache: Cache2 = Cache2::new(max(a.size(), b.size()));
+    let mut stack = Vec::with_capacity(max(a.size(), b.size()));
+    println!("Spawned: {:?}", spawn_tasks_2(&a, &b, &mut op_cache, &mut stack));
     bencher.iter(|| {
-        spawn_tasks_2(&a, &b)
+        spawn_tasks_2(&a, &b, &mut op_cache, &mut stack)
         //a.and_not(&b)
     });
 }
@@ -53,9 +58,11 @@ fn minus_10000(bencher: &mut Bencher) {
     let b = Bdd::from_string(&std::fs::read_to_string("inputs/minus_10000_b.bdd").unwrap());
     println!("A:{}, B:{}", a.size(), b.size());
     a.and_not(&b);
-    println!("Spawned: {:?}", spawn_tasks_2(&a, &b));
+    let mut op_cache: Cache2 = Cache2::new(max(a.size(), b.size()));
+    let mut stack = Vec::with_capacity(max(a.size(), b.size()));
+    println!("Spawned: {:?}", spawn_tasks_2(&a, &b, &mut op_cache, &mut stack));
     bencher.iter(|| {
-        spawn_tasks_2(&a, &b)
+        spawn_tasks_2(&a, &b, &mut op_cache, &mut stack)
         //a.and_not(&b)
     });
 }

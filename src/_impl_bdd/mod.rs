@@ -16,5 +16,6 @@ pub mod _impl_util;
 
 pub mod u16_apply;
 pub mod dynamic_op_cache;
+pub mod cache2;
 
 pub mod bench_task_generator;

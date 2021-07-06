@@ -35,11 +35,13 @@ impl BddPointer {
     }
 
     /// Cast this pointer to standard usize index.
+    #[inline]
     pub fn to_index(self) -> usize {
         self.0 as usize
     }
 
     /// Create a pointer from an usize index.
+    #[inline]
     pub fn from_index(index: usize) -> BddPointer {
         BddPointer(index as u32)
     }
