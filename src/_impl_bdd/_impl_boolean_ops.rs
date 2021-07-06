@@ -271,6 +271,8 @@ where
         }
     }
 
+    println!("OP cache: {}", finished.len());
+
     if is_not_empty {
         result
     } else {

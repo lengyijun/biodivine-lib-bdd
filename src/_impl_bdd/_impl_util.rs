@@ -190,11 +190,13 @@ impl Bdd {
     }
 
     /// **(internal)** Get the low link of the node at a specified location.
+    #[inline]
     pub(crate) fn low_link_of(&self, node: BddPointer) -> BddPointer {
         self.0[node.to_index()].low_link
     }
 
     /// **(internal)** Get the high link of the node at a specified location.
+    #[inline]
     pub(crate) fn high_link_of(&self, node: BddPointer) -> BddPointer {
         self.0[node.to_index()].high_link
     }

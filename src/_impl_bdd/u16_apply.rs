@@ -107,12 +107,13 @@ fn apply_fixed<T, const X: usize>(
 
     let mut is_empty = true;
 
-    let mut existing: HashMap<BddNode, BddPointer, FxBuildHasher> =
+    /*let mut existing: HashMap<BddNode, BddPointer, FxBuildHasher> =
         HashMap::with_capacity_and_hasher(max(left.size(), right.size()), FxBuildHasher::default());
     existing.insert(BddNode::mk_zero(left.num_vars()), BddPointer::zero());
-    existing.insert(BddNode::mk_one(left.num_vars()), BddPointer::one());
+    existing.insert(BddNode::mk_one(left.num_vars()), BddPointer::one());*/
 
     let mut result = Bdd::mk_true(left.num_vars());
+    Extend::<BddNode>::extend_reserve(&mut result.0, max(left.size(), right.size()));
 
     let mut stack = StaticTaskStack::new(left.num_vars());
     stack.push((left.root_pointer(), right.root_pointer()));
@@ -153,15 +154,8 @@ fn apply_fixed<T, const X: usize>(
                 op_cache.set(l, r, new_low);
             } else {
                 let node = BddNode::mk_node(decision_var, new_low, new_high);
-                if let Some(index) = existing.get(&node) {
-                    // Node already exists, just make it a result of this computation.
-                    op_cache.set(l, r, *index);
-                } else {
-                    // Node does not exist, it needs to be pushed to result.
-                    result.push_node(node);
-                    existing.insert(node, result.root_pointer());
-                    op_cache.set(l, r, result.root_pointer());
-                }
+                result.push_node(node);
+                op_cache.set(l, r, result.root_pointer());
             }
         } else {
             stack.push((l, r));

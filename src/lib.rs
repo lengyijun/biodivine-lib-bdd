@@ -33,6 +33,7 @@
 //! For a more detailed description, see the [tutorial module](./tutorial/index.html) documentation.
 //! There is also an experimental support for converting BDDs back into boolean expressions.
 #![feature(test)]
+#![feature(extend_one)]
 extern crate test;
 
 use std::collections::{HashMap, HashSet};
