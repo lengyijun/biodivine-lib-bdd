@@ -5,6 +5,7 @@ use fxhash::FxBuildHasher;
 use std::convert::TryFrom;
 use crate::_impl_bdd::dynamic_op_cache::DynamicOpCache;
 use crate::_impl_bdd::cache2::Cache2;
+use std::option::Option::Some;
 
 /// "Original" task generation enhanced with n-log-n initial cache size
 pub fn spawn_tasks(left: &Bdd, right: &Bdd) -> usize {
@@ -64,12 +65,12 @@ pub(crate) fn spawn_tasks_2(left: &Bdd, right: &Bdd, op_cache: &mut Cache2, stac
     //let mut op_cache: Cache2 = Cache2::new(max(left.size(), right.size()));
 
     let mut i = 0;
-    while let Some((l, r)) = stack.pop() {
+    /*while let Some((l, r)) = stack.pop() {
+        i += 1;
         if op_cache.contains(l, r) {
             continue;
         } else {
             op_cache.insert(l, r);
-            i += 1;
             let (l_v, r_v) = (left.var_of(l), right.var_of(r));
             let decision_var = min(l_v, r_v);
 
@@ -93,12 +94,67 @@ pub(crate) fn spawn_tasks_2(left: &Bdd, right: &Bdd, op_cache: &mut Cache2, stac
                 stack.push((l_high, r_high));
             }
         }
+    }*/
+    loop {
+        if stack.len() > 8 {
+            i += 8;
+            let x1 = stack.pop().unwrap();
+            let x2 = stack.pop().unwrap();
+            let x3 = stack.pop().unwrap();
+            let x4 = stack.pop().unwrap();
+            let x5 = stack.pop().unwrap();
+            let x6 = stack.pop().unwrap();
+            let x7 = stack.pop().unwrap();
+            let x8 = stack.pop().unwrap();
+            iteration(left, right, op_cache, stack, x1.0, x1.1);
+            iteration(left, right, op_cache, stack, x2.0, x2.1);
+            iteration(left, right, op_cache, stack, x3.0, x3.1);
+            iteration(left, right, op_cache, stack, x4.0, x4.1);
+            iteration(left, right, op_cache, stack, x5.0, x5.1);
+            iteration(left, right, op_cache, stack, x6.0, x6.1);
+            iteration(left, right, op_cache, stack, x7.0, x7.1);
+            iteration(left, right, op_cache, stack, x8.0, x8.1);
+        } else if let Some((l, r)) = stack.pop() {
+            i += 1;
+            iteration(left, right, op_cache, stack, l, r);
+        } else {
+            break;
+        }
     }
 
-    //(op_cache.len(), op_cache.collisions_since_rehash)
-    (i, 0)
+    (i, op_cache.collisions)
+    //(i, 0)
 }
 
+fn iteration(left: &Bdd, right: &Bdd, op_cache: &mut Cache2, stack: &mut Vec<(BddPointer, BddPointer)>, l: BddPointer, r: BddPointer) {
+    if op_cache.contains(l, r) {
+        return;
+    } else {
+        op_cache.insert(l, r);
+        let (l_v, r_v) = (left.var_of(l), right.var_of(r));
+        let decision_var = min(l_v, r_v);
+
+        let (l_low, l_high) = if l_v != decision_var {
+            (l, l)
+        } else {
+            left.links(l)
+            //(left.low_link_of(l), left.high_link_of(l))
+        };
+        let (r_low, r_high) = if r_v != decision_var {
+            (r, r)
+        } else {
+            right.links(r)
+            //(right.low_link_of(r), right.high_link_of(r))
+        };
+
+        if !op_cache.contains(l_low, r_low) {
+            stack.push((l_low, r_low));
+        }
+        if !op_cache.contains(l_high, r_high) {
+            stack.push((l_high, r_high));
+        }
+    }
+}
 
 pub fn n_log_n(left: u64, right: u64) -> u64 {
     debug_assert!(left > 0);

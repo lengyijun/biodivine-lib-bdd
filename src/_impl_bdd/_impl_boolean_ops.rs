@@ -176,10 +176,12 @@ where
     let mut finished: HashMap<Task, BddPointer, FxBuildHasher> =
         HashMap::with_capacity_and_hasher(max(left.size(), right.size()), FxBuildHasher::default());
 
+    let mut i = 0;
     while let Some(on_stack) = stack.last() {
         if finished.contains_key(on_stack) {
             stack.pop();
         } else {
+            i += 1;
             // skip finished tasks
             let (l, r) = (on_stack.left, on_stack.right);
 
@@ -271,7 +273,7 @@ where
         }
     }
 
-    println!("OP cache: {}", finished.len());
+    println!("OP cache: {}, I: {}", finished.len(), i);
 
     if is_not_empty {
         result
