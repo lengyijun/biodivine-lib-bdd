@@ -21,7 +21,12 @@ fxhash = "0.2.1"
 
 [dev-dependencies]
 rand = "0.7"
+criterion = "0.3"
 
 # Enable rich docs for some online docs autogen services.
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "./res/docs-head.html"]
+
+[[bench]]
+name = "hash"
+harness = false
